@@ -34,7 +34,7 @@ class Bird:
 		if self.state  >2:
 			self.state=0
 	def jump(self):
-		self.pos[1]-=8
+		self.pos[1]-=10
 
 	def collideTop(self, obj2):
 		offset_x = obj2.x - self.pos[0]
@@ -51,7 +51,7 @@ class Bird:
 		offset_y = obj2.y - self.pos[1]
 		return self.mask.overlap(obj2.mask, (offset_x, offset_y)) != None	
 	def move(self):
-		self.pos[1] += 2
+		self.pos[1] += 5
 
 class Base:
 	base_img = BASE_IMG
@@ -72,7 +72,7 @@ class Base:
 
 class Pipe():
 	GAP = 150
-	VEL = 1
+	VEL = 3
 
 	def __init__(self, x):
 		self.x = x
@@ -88,7 +88,7 @@ class Pipe():
 		self.set_height()
 
 	def set_height(self):
-		self.height = random.randrange(50, 350)
+		self.height = random.randrange(50, 300)
 		self.top = self.height - self.PIPE_TOP.get_height()
 		self.bottom = self.height + self.GAP
 
@@ -212,6 +212,10 @@ def eval_genomes(genomes, config):
 				birds.pop(birds.index(bird))
 		if len(birds) == 0:
 			run = False		
+		 #break if score gets large enough
+		if score > 600:
+			pickle.dump(nets[0],open("best.pickle", "wb"))
+			break
 		win.blit(pygame.transform.scale(BG_IMG, (WIDTH,HEIGHT)), (0,0))				
 		background_update(win,birds,bases,pipes,distance,score,gen)	
 

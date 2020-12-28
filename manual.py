@@ -15,7 +15,7 @@ font = pygame.font.SysFont("comicsans", 20)
 class Bird:
 	IMGS = BIRD_IMGS
 	def __init__(self,img):
-		self.pos = [40,250]
+		self.pos = [40,300]
 		self.state = 0
 		self.surface = self.IMGS[self.state]
 		self.mask = pygame.mask.from_surface(self.surface)
