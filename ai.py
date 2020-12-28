@@ -33,8 +33,8 @@ class Bird:
 			self.state +=1
 		if self.state  >2:
 			self.state=0
-	def jump(self):
-		self.pos[1]-=10
+	def jump(self,energy):
+		self.pos[1]-=energy
 
 	def collideTop(self, obj2):
 		offset_x = obj2.x - self.pos[0]
@@ -50,16 +50,14 @@ class Bird:
 		offset_x = obj2.x - self.pos[0]
 		offset_y = obj2.y - self.pos[1]
 		return self.mask.overlap(obj2.mask, (offset_x, offset_y)) != None	
-	def move(self):
-		self.pos[1] += 5
+	def move(self,gravity):
+		self.pos[1] += gravity
 
 class Base:
 	base_img = BASE_IMG
-	vel = 1
 	def __init__(self, x,y):
 		self.x = x
 		self.y = y
-		self.vel = self.vel
 		self.img = self.base_img
 		self.mask = pygame.mask.from_surface(self.img)
 
@@ -67,12 +65,11 @@ class Base:
 	def draw(self,win):
 		win.blit(self.img,(self.x,self.y))
 	
-	def move(self):
-		self.x-=self.vel
+	def move(self,vel):
+		self.x-=vel
 
 class Pipe():
 	GAP = 150
-	VEL = 3
 
 	def __init__(self, x):
 		self.x = x
@@ -92,15 +89,15 @@ class Pipe():
 		self.top = self.height - self.PIPE_TOP.get_height()
 		self.bottom = self.height + self.GAP
 
-	def move(self):
-		self.x -= self.VEL
+	def move(self,vel):
+		self.x -= vel
 
 
 	def draw(self, win):
 		win.blit(self.PIPE_TOP, (self.x, self.top))
 		win.blit(self.PIPE_BOTTOM, (self.x, self.bottom))		
 		
-def background_update(win,birds,bases,pipes,distance,score,gen):	
+def background_update(win,birds,bases,pipes,distance,score,gen,vel,limit):	
 	for bird in birds:
 		bird.animate(distance)			
 		bird.update(win)
@@ -109,13 +106,15 @@ def background_update(win,birds,bases,pipes,distance,score,gen):
 		pipe.draw(win)
 
 	for base in bases:
-		base.move()
+		base.move(vel)
 		base.draw(win)	
 
 	win.blit(font.render(f"Score: {score}", 1, (255,255,255)), (20, 0))	
 	win.blit(font.render(f"Distance: {distance}", 1, (255,255,255)), (20, 20))	
 	win.blit(font.render(f"Alive: {len(birds)}", 1, (255,255,255)), (20, 40))	
 	win.blit(font.render(f"GEN: {gen}", 1, (255,255,255)), (20, 60))	
+	win.blit(font.render(f"Speed: {vel}", 1, (255,255,255)), (20, 80))	
+	win.blit(font.render(f"Target: {limit}", 1, (255,255,255)), (20, 100))	
 	pygame.display.update()
 
 def eval_genomes(genomes, config):
@@ -128,6 +127,7 @@ def eval_genomes(genomes, config):
 	nets = [] 
 	birds = []
 	ge = []
+	vel = 3
 
 	for genome_id, genome in genomes:
 		genome.fitness = 0  # start with fitness level of 0
@@ -146,10 +146,28 @@ def eval_genomes(genomes, config):
 	score = 0
 	FPS = 60
 	clock = pygame.time.Clock()
+	limit = 2000
+	reaward = 0.1
+	index = 0
+	energy = 10
+	gravity = 5
 	
 	while run:
 		clock.tick(FPS)
 		distance+=1
+
+		if distance==limit:
+			vel+=1
+			index +=1
+			limit+=limit
+			gravity+=index
+			energy+=index
+			reaward = index*10
+		else:
+			if index == 0:
+				reaward =0.1
+			else:		
+				reaward = index*0.1
 
 		for event in pygame.event.get():
 			if event.type == pygame.QUIT:
@@ -173,19 +191,19 @@ def eval_genomes(genomes, config):
 				break
 
 		for x, bird in enumerate(birds):  # give each bird a fitness of 0.1 for each frame it stays alive
-			ge[x].fitness += 0.1
-			bird.move()
+			ge[x].fitness += reaward
+			bird.move(gravity)
 
 			# send bird location, top pipe location and bottom pipe location and determine from network whether to jump or not
 			output = nets[birds.index(bird)].activate((bird.pos[1], abs(bird.pos[1] - pipes[pipe_ind].height), abs(bird.pos[1] - pipes[pipe_ind].bottom)))
 
 			if output[0] > 0.5:  # we use a tanh activation function so result will be between -1 and 1. if over 0.5 jump
-				bird.jump()
+				bird.jump(energy)
 
 		rem = []
 		add_pipe = False
 		for pipe in pipes:
-			pipe.move()
+			pipe.move(vel)
 
 			if pipe.x + pipe.PIPE_TOP.get_width() < 0:
 				rem.append(pipe)
@@ -213,11 +231,11 @@ def eval_genomes(genomes, config):
 		if len(birds) == 0:
 			run = False		
 		 #break if score gets large enough
-		if score > 600:
+		if score > 10000:
 			pickle.dump(nets[0],open("best.pickle", "wb"))
 			break
 		win.blit(pygame.transform.scale(BG_IMG, (WIDTH,HEIGHT)), (0,0))				
-		background_update(win,birds,bases,pipes,distance,score,gen)	
+		background_update(win,birds,bases,pipes,distance,score,gen,vel,limit)	
 
 def run(config_file):
 	"""
