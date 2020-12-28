@@ -16,6 +16,7 @@ class Bird:
 		self.pos = [40,250]
 		self.state = 0
 		self.surface = self.IMGS[self.state]
+		self.mask = pygame.mask.from_surface(self.surface)
 
 	def update(self,win):
 		self.surface = self.IMGS[self.state] #
@@ -28,6 +29,16 @@ class Bird:
 	def jump(self):
 		self.pos[1]-=5
 
+	def collideTop(self, obj2):
+		offset_x = obj2.x - self.pos[0]
+		offset_y = obj2.top - self.pos[1]
+		return self.mask.overlap(obj2.PIPE_TOP_MASK, (offset_x, offset_y)) != None
+	def collideButtom(self, obj2):
+		offset_x = obj2.x - self.pos[0]
+		offset_y = obj2.bottom - self.pos[1]
+		return self.mask.overlap(obj2.PIPE_BUTTOM_MASK, (offset_x, offset_y)) != None
+
+
 
 class Base:
 	base_img = BASE_IMG
@@ -37,7 +48,6 @@ class Base:
 		self.y = y
 		self.vel = self.vel
 		self.img = self.base_img
-		self.mask = pygame.mask.from_surface(self.img)
 
 	def draw(self,win):
 		win.blit(self.img,(self.x,self.y))
@@ -56,6 +66,8 @@ class Pipe():
 		self.bottom = 0
 		self.PIPE_TOP = pygame.transform.flip(PIPE_IMG, False, True)
 		self.PIPE_BOTTOM = PIPE_IMG
+		self.PIPE_TOP_MASK = pygame.mask.from_surface(self.PIPE_TOP)
+		self.PIPE_BUTTOM_MASK = pygame.mask.from_surface(self.PIPE_BOTTOM)
 		self.passed = False
 
 		self.set_height()
@@ -115,6 +127,8 @@ def run():
 		add_pipe = False
 		for pipe in pipes:
 			pipe.move()
+			if (bird.collideTop(pipe)) == True or (bird.collideButtom(pipe)) == True:
+				run = False
 
 			if pipe.x + pipe.PIPE_TOP.get_width() < 0:
 				rem.append(pipe)
